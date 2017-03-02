@@ -14,11 +14,15 @@
 #include <stdio.h>
 #include "circarray/circarray.h"
 
+#include "FreeRTOS.h"
+#include "semphr.h"
 
 
 #define MAX_STRLEN 50
 static CircArr_InitTypeDef msg; //first create 1 circular array buffer called msg
-//make above static?
+//mutexes
+SemaphoreHandle_t mutex_USART_RW;
+
 
 //buf_test(&msg);
 
@@ -39,12 +43,10 @@ void init_usart1(uint32_t baud)
 	USART_InitTypeDef USART_InitStruct;
 	NVIC_InitTypeDef NVIC_InitStruct;
 
-
 	// Enable clock for GPIOB
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
 	//Enable clock for usart1 peripheral
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
-
 
 	//Tell pins PB6 and PB7 which alternating function you will use
 	GPIO_PinAFConfig(GPIOB, GPIO_PinSource6, GPIO_AF_USART1); //tx
@@ -81,7 +83,6 @@ void init_usart1(uint32_t baud)
 	//initializes a circular array for storing incoming serial data
 	initCircArray(&msg,200);
 
-
 	//Lastly, enable usart1
 	USART_Cmd(USART1, ENABLE);
 
@@ -99,12 +100,14 @@ void init_usart1(uint32_t baud)
 void USART1_IRQHandler()
 {
 
-if (USART_GetITStatus(USART1, USART_IT_RXNE))
+if (USART_GetITStatus(USART1, USART_IT_RXNE) == SET)
 		{
-	      //get newest incoming char/byte from data register and put in buffer
-			char c = USART1->DR;
-			USART_ClearITPendingBit(USART1, USART_IT_RXNE);
+
+			uint8_t c = USART_ReceiveData(USART1);
 			buf_putbyte(&msg,c);
+
+	      	//USART_ClearITPendingBit(USART1, USART_IT_RXNE);
+	      	//USART_ITConfig(USART1, USART_IT_RXNE, DISABLE);
 
 		}
 
@@ -129,7 +132,12 @@ void usart1_send( volatile char *s)
  * @retval uint8_t
  */
 uint8_t usart1_read(void){
-	return buf_getbyte(&msg);
+	if ( xSemaphoreTake( mutex_USART_RW, portMAX_DELAY) == pdTRUE){
+		uint8_t b = buf_getbyte(&msg);//needs critical section
+		xSemaphoreGive(mutex_USART_RW); // release the mutex
+		return b;
+	}
+
 }
 
 /**
@@ -138,7 +146,11 @@ uint8_t usart1_read(void){
  * @retval uint8_t
  */
 char usart1_readc(void){
-	return (char)buf_getbyte(&msg);
+	if ( xSemaphoreTake( mutex_USART_RW, portMAX_DELAY) == pdTRUE){
+	char c = (char)buf_getbyte(&msg);//needs critical section
+	xSemaphoreGive(mutex_USART_RW); // release the mutex
+	return c;
+	}
 }
 
 /**

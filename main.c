@@ -84,11 +84,43 @@ typedef struct NAVdata { //gpspayload
 
 struct GPSmsg {
    uint8_t start[2]; //A0 A1 is start sequence
-   uint8_t payload_length;
+   uint16_t payload_length;
    uint8_t* payload;
    uint8_t end[2];
    uint8_t checksum;
 } GPSmsg;
+
+
+
+typedef enum {GETSTART, GETLENGTH, GETPAYLOAD, GETCHECKSUM, GETTRAILER, VALIDATE} GPS_STATE;
+GPS_STATE gpsstate = GETSTART;
+
+void processGPS(GPS_STATE state){
+	switch(state){
+	case GETSTART:
+		//wait for 2 bytes over usart
+		//cast to uint16
+		//if a0,a1 -->get length
+		break;
+	case GETLENGTH:
+		//wait 2 bytes, cast to uint16 length
+		break;
+	case GETPAYLOAD:
+		//wait for length number of bytes
+		break;
+	case GETCHECKSUM:
+		//wait for 1 byte
+		break;
+	case GETTRAILER:
+		//wait for 2 bytes
+		break;
+	case VALIDATE:
+		//validate message
+		//if ok cast to gpsmsg
+		//-->getstart
+		break;
+	}
+}
 
 uint8_t validateChecksum(uint8_t payload_length, uint8_t* payload, uint8_t checksum){
 	if ((payload_length == 0) || (payload == 0)) {
@@ -213,6 +245,7 @@ void thread_button_messages(void *p)
 {
   while (1)
   {
+
     int a;
     // xQueueReceive is used to get an item from a queue; the first argument specifies the queue from which to receive;
     // the second argument is the pointer to where data should be written from the queue;
@@ -250,7 +283,7 @@ void thread_func3(void *p) //prints testing every 2 seconds. //todo:humidty here
     // lock mutex_printf -- wait indefinitely to lock
     if ( xSemaphoreTake( mutex_printf, portMAX_DELAY) == pdTRUE)
     {
-      printf("testing\n");
+      //printf("testing\n");
       xSemaphoreGive(mutex_printf); // release mutex
     }
     delay_ms(2000);
@@ -270,7 +303,9 @@ void thread_GPS(void *p) //read GPS messages via usart here
 				//callme = flookup[read]; //assign function to be called
 				//callme();//call it
 				if ( xSemaphoreTake( mutex_printf, portMAX_DELAY) == pdTRUE){ //put all printf's in critical section
-				printf("got %c", read);
+				if(read == 0xA0){printf("\n");}
+
+				printf("%x ", read);
 				xSemaphoreGive(mutex_printf);
 				}
 				//usart1_send("ok");//needs critical section
@@ -283,12 +318,16 @@ void thread_GPS(void *p) //read GPS messages via usart here
 
 int main(void)
 {
-  // initialize
+  // initialize system
   SystemInit();
   initialise_monitor_handles();
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+
+  //init peripherals
   init_usart();
   init_i2c();
+
+  //todo:remove all of these but the temp sensor
   init_LED_pins();
   init_button();
   init_accelerometers(); // initialize accelerometers
