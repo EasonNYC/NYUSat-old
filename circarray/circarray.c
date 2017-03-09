@@ -170,6 +170,16 @@ if ( buf_full(arr) ) {
 arr->buf[arr->n_w++ % arr->size] = c;
 return (1);
 }
+
+uint8_t buf_peek_byte(CircArr_InitTypeDef* arr){
+	if ( buf_empty(arr) ) { //if empty don't increment and return arbitrary value for now
+		return (0); }
+
+	uint8_t b = arr->buf[arr->n_r  % arr->size];//does not increment circ array read index
+	return b;
+}
+
+
 /*
 void buf_test(CircArr_InitTypeDef* arr)
 {

@@ -16,7 +16,7 @@
 
 #include "FreeRTOS.h"
 #include "semphr.h"
-
+//#include "task.h"
 
 #define MAX_STRLEN 50
 static CircArr_InitTypeDef msg; //first create 1 circular array buffer called msg
@@ -86,6 +86,9 @@ void init_usart1(uint32_t baud)
 	//Lastly, enable usart1
 	USART_Cmd(USART1, ENABLE);
 
+	//enable mutex
+	mutex_USART_RW = xSemaphoreCreateMutex();
+
 
 }
 
@@ -104,16 +107,16 @@ if (USART_GetITStatus(USART1, USART_IT_RXNE) == SET)
 		{
 
 			uint8_t c = USART_ReceiveData(USART1);
+					//if (xSemaphoreTakeFromISR(mutex_USART_RW, portMAX_DELAY) == pdTRUE){
 			buf_putbyte(&msg,c);
-
-	      	//USART_ClearITPendingBit(USART1, USART_IT_RXNE);
-	      	//USART_ITConfig(USART1, USART_IT_RXNE, DISABLE);
+			      	//      	xSemaphoreGiveFromISR(mutex_USART_RW, 0);
+					//}
 
 		}
 
 }
 /**
- * @brief Function to transmit a string via USART1 (blocking)
+ * @brief Function to transmit a string via USART1 (blocking) todo: change to non-blocking send queue
  * @param ascii char
  * @retval none
  */
@@ -137,7 +140,6 @@ uint8_t usart1_read(void){
 		xSemaphoreGive(mutex_USART_RW); // release the mutex
 		return b;
 	}
-
 }
 
 /**
@@ -151,7 +153,18 @@ char usart1_readc(void){
 	xSemaphoreGive(mutex_USART_RW); // release the mutex
 	return c;
 	}
+
 }
+
+uint8_t usart1_peek_byte(void){
+	if ( xSemaphoreTake( mutex_USART_RW, portMAX_DELAY) == pdTRUE){
+	uint8_t b = buf_peek_byte(&msg);
+	xSemaphoreGive(mutex_USART_RW); // release the mutex
+	return b;
+	}
+
+}
+
 
 /**
  * @brief Function returns number of bytes waiting to be read in the serial buffer

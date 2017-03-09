@@ -19,6 +19,8 @@ SRCS += $(CIRCARR_SRCS)
 I2C_SRCS = i2c/i2c.c
 SRCS += $(I2C_SRCS)
 
+GPS_SRCS = GPS/GPS.c
+SRCS += $(GPS_SRCS)
 
 # Project Name. Binary will be generated with this name (as .elf)
 PROJ_NAME=NYUSat

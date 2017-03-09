@@ -31,6 +31,10 @@
 #include "usart/usart.h"
 #include "i2c/i2c.h"
 
+//include drivers
+#include "GPS/GPS.h"
+
+
 /* static void init_systick(); */
 static void delay_ms(uint32_t n);
 static volatile uint32_t msTicks; // counts 1 ms timeTicks
@@ -57,87 +61,7 @@ SemaphoreHandle_t mutex_printf; // in FreeRTOS, mutexes use the same struct defi
 
 
 
-//todo: GPS stuff for prototyping. move to gps.h later
 
-typedef struct NAVdata { //gpspayload
-   uint8_t id; //message type
-   uint8_t fixmode;
-   uint8_t numsv;
-   uint16_t gnss_week_num;
-   uint32_t gnss_time_of_week; //
-   int32_t latitude;
-   int32_t longitude;
-   uint32_t altitude_ellip;
-   uint32_t altitude_sealvl;
-   uint16_t gdop;
-   uint16_t pdop;
-   uint16_t hdop;
-   uint16_t vdop;
-   uint16_t tdop;
-   int32_t ecef_x;
-   int32_t ecef_y;
-   int32_t ecef_z;
-   int32_t ecef_velocity_x;
-   int32_t ecef_velocity_y;
-   int32_t ecef_velocity_z;
-} NAVdata; //59 bytes
-
-struct GPSmsg {
-   uint8_t start[2]; //A0 A1 is start sequence
-   uint16_t payload_length;
-   uint8_t* payload;
-   uint8_t end[2];
-   uint8_t checksum;
-} GPSmsg;
-
-
-
-typedef enum {GETSTART, GETLENGTH, GETPAYLOAD, GETCHECKSUM, GETTRAILER, VALIDATE} GPS_STATE;
-GPS_STATE gpsstate = GETSTART;
-
-void processGPS(GPS_STATE state){
-	switch(state){
-	case GETSTART:
-		//wait for 2 bytes over usart
-		//cast to uint16
-		//if a0,a1 -->get length
-		break;
-	case GETLENGTH:
-		//wait 2 bytes, cast to uint16 length
-		break;
-	case GETPAYLOAD:
-		//wait for length number of bytes
-		break;
-	case GETCHECKSUM:
-		//wait for 1 byte
-		break;
-	case GETTRAILER:
-		//wait for 2 bytes
-		break;
-	case VALIDATE:
-		//validate message
-		//if ok cast to gpsmsg
-		//-->getstart
-		break;
-	}
-}
-
-uint8_t validateChecksum(uint8_t payload_length, uint8_t* payload, uint8_t checksum){
-	if ((payload_length == 0) || (payload == 0)) {
-		return 0;
-	}
-
-	//calc checksum
-	uint8_t total = 0;
-	for(int i = 0;i < payload_length;i++) {
-		total ^= payload[i];
-	}
-
-	if(checksum == total) {
-		return 1;
-	}
-	return 0;
-}
 
 
 // SysTick_Handler is registered by the RTOS -- currently configured at 1 kHz -- in FreeRTOSConfig.h -- hence, each tick is 1 ms
@@ -295,10 +219,12 @@ void thread_GPS(void *p) //read GPS messages via usart here
 	while (1)
 	{
 
+		processGPS();
+		//
 		//check serial buffer for num incoming bytes //todo: calculate byte count needed
-		while(usart1_available() > 0){
+		/*while(usart1_available() > 0){
 			char read = usart1_readc();
-
+			//processGPS(read)
 			if (read > 0) {
 				//callme = flookup[read]; //assign function to be called
 				//callme();//call it
@@ -310,7 +236,7 @@ void thread_GPS(void *p) //read GPS messages via usart here
 				}
 				//usart1_send("ok");//needs critical section
 			  }
-		}
+		}*/
 	}
 }
 
