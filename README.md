@@ -1,3 +1,5 @@
+NOTE: This is the old repository housing the original development files and this project has now moved! For latest firmware and development please visit: https://github.com/EasonNYC/NYUSat 
+
 NYUSat
 OBC and Science Payload code being actively developed for the NYUSat cube satellite. This software is used and prototyped on an STM32F4Discovery and later will be ported to a standalone ST microcontroller on the satellite.
 
